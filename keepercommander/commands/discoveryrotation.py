@@ -12,11 +12,13 @@
 import argparse
 import json
 import logging
+import os
 from datetime import datetime
+from threading import Thread
 from typing import Dict, Optional, Any
 
 import requests
-from keeper_secrets_manager_core.utils import url_safe_str_to_bytes
+from keeper_secrets_manager_core.utils import url_safe_str_to_bytes, bytes_to_base64
 
 from .base import Command, GroupCommand, dump_report_data
 from .folder import FolderMoveCommand
@@ -26,6 +28,7 @@ from .pam.config_facades import PamConfigurationRecordFacade
 from .pam.config_helper import pam_configurations_get_all, pam_configuration_get_one, \
     pam_configuration_remove, pam_configuration_create_record_v6, record_rotation_get, \
     pam_configuration_get_single_value_from_field_by_id, pam_decrypt_configuration_data
+from .pam.kcm_helper import start_local_server
 from .pam.pam_dto import GatewayActionGatewayInfo, GatewayActionDiscoverInputs, GatewayActionDiscover, \
     GatewayActionRotate, \
     GatewayActionRotateInputs, GatewayAction, GatewayActionJobInfoInputs, \
@@ -33,7 +36,7 @@ from .pam.pam_dto import GatewayActionGatewayInfo, GatewayActionDiscoverInputs, 
 from .pam.router_helper import router_send_action_to_gateway, print_router_response, \
     router_get_connected_gateways, router_set_record_rotation_information, router_get_rotation_schedules, get_router_url
 from .record_edit import RecordEditMixin
-from .. import api, utils, vault_extensions, vault, record_management
+from .. import api, utils, vault_extensions, vault, record_management, crypto, rest_api
 from ..display import bcolors
 from ..error import CommandError
 from ..params import KeeperParams, LAST_RECORD_UID
@@ -57,6 +60,7 @@ class PAMControllerCommand(GroupCommand):
         self.register_command('config', PAMConfigurationsCommand(), 'Manage PAM Configurations', 'c')
         self.register_command('rotation', PAMRotationCommand(), 'Manage Rotations', 'r')
         self.register_command('action', GatewayActionCommand(), 'Execute action on the Gateway', 'a')
+        self.register_command('connect', PAMKCMTunnelCommand(), 'Connect to the Server', 'con')
 
 
 class PAMGatewayCommand(GroupCommand):
@@ -83,6 +87,13 @@ class PAMConfigurationsCommand(GroupCommand):
         self.default_verb = 'list'
 
 
+class PAMKCMTunnelCommand(GroupCommand):
+
+    def __init__(self):
+        super(PAMKCMTunnelCommand, self).__init__()
+        self.register_command('start', PAMKCMTunnelStartCommand(), 'Start KCM Tunnel', 's')
+
+
 class PAMRotationCommand(GroupCommand):
 
     def __init__(self):
@@ -104,7 +115,6 @@ class GatewayActionCommand(GroupCommand):
         self.register_command('job-cancel', PAMGatewayActionJobCommand(), 'View Job details', 'jc')
 
         # self.register_command('job-list', DRCmdListJobs(), 'List Running jobs')
-        # self.register_command('tunnel', DRTunnelCommand(), 'Tunnel to the server')
 
 
 class PAMCmdListJobs(Command):
@@ -1059,6 +1069,39 @@ class PAMGatewayActionJobCommand(Command):
         print_router_response(router_response, original_conversation_id=conversation_id, response_type='job_info')
 
 
+class PAMKCMTunnelStartCommand(Command):
+
+    parser = argparse.ArgumentParser(prog='pam-kcm-tunnel-start-command')
+    parser.add_argument('--gateway',    '-g', required=False, dest='gateway_uid', action='store', help='Gateway UID. Needed only if there are more than one gateway running')
+    parser.add_argument('--record-uid', '-r', required=True,  dest='record_uid',  action='store', help='Record UID to connect')
+
+    def get_parser(self):
+        return PAMKCMTunnelStartCommand.parser
+
+    def execute(self, params, **kwargs):
+
+        record_uid = kwargs.get('record_uid')
+        gateway_uid = kwargs.get('gateway_uid')
+
+        record_uid_bytes = url_safe_str_to_bytes(record_uid)
+        gateway_uid_bytes = url_safe_str_to_bytes(gateway_uid) if gateway_uid else None
+
+        transmission_key = utils.generate_aes_key()
+        server_public_key = rest_api.SERVER_PUBLIC_KEYS[params.rest_context.server_key_id]
+
+        if params.rest_context.server_key_id < 7:
+            encrypted_transmission_key = crypto.encrypt_rsa(transmission_key, server_public_key)
+        else:
+            encrypted_transmission_key = crypto.encrypt_ec(transmission_key, server_public_key)
+
+        encrypted_session_token = crypto.encrypt_aes_v2(utils.base64_url_decode(params.session_token), transmission_key)
+
+        encrypted_transmission_key_str = bytes_to_base64(encrypted_transmission_key)
+        encrypted_session_token_str = bytes_to_base64(encrypted_session_token)
+
+        start_local_server(encrypted_session_token_str, encrypted_transmission_key_str)
+
+
 class PAMGatewayActionRotateCommand(Command):
     parser = argparse.ArgumentParser(prog='dr-rotate-command')
     parser.add_argument('--record-uid', '-r', required=True, dest='record_uid', action='store',
@@ -1302,13 +1345,15 @@ class PAMCreateGatewayCommand(Command):
             print('-----------------------------------------------')
 
 
-"""
+
 WS_INIT = {'kind': 'init'}
 WS_LOG_FOLDER = 'dr-logs'
 WS_HEADERS = {
     'ClientVersion': 'ms16.2.4'
 }
 WS_SERVER_PING_INTERVAL_SEC = 5
+
+WS_URL = 'wss://dev.connect.keepersecurity.com/client'
 
 
 pam_cmd_parser = argparse.ArgumentParser(prog='dr-cmd')
@@ -1328,7 +1373,7 @@ class PAMConnection:
         self.ws_app = None
         self.thread = None
 
-    def connect(self, session_token):
+    def connect(self, params, session_token):
         try:
             import websocket
         except ImportError:
@@ -1337,11 +1382,21 @@ class PAMConnection:
                             f'`{bcolors.OKGREEN}pip3 install -U websocket-client{bcolors.ENDC}`')
             return
 
-        headers = WS_HEADERS
-        headers['Authorization'] = f'User {session_token}'
+        transmission_key = utils.generate_aes_key()
+        server_public_key = rest_api.SERVER_PUBLIC_KEYS[params.rest_context.server_key_id]
+
+        if params.rest_context.server_key_id < 7:
+            encrypted_transmission_key = crypto.encrypt_rsa(transmission_key, server_public_key)
+        else:
+            encrypted_transmission_key = crypto.encrypt_ec(transmission_key, server_public_key)
+
+        encrypted_session_token = crypto.encrypt_aes_v2(utils.base64_url_decode(params.session_token), transmission_key)
+
+        encrypted_transmission_key_str = bytes_to_base64(encrypted_transmission_key)
+        encrypted_session_token_str = bytes_to_base64(encrypted_session_token)
+
         self.ws_app = websocket.WebSocketApp(
-            f'{WS_URL}?Auth={session_token}&AuthType=User',
-            header=headers,
+            f'{WS_URL}?Authorization=KeeperUser ${encrypted_session_token}&TransmissionKey=${transmission_key}',
             on_open=self.on_open,
             on_message=self.on_message,
             on_error=self.on_error,
@@ -1464,4 +1519,4 @@ class PAMDisconnect(Command):
         else:
             params.ws.disconnect()
             params.ws = None
-"""
+
