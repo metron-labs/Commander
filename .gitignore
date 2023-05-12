@@ -13,3 +13,5 @@ keeper.txt
 *.csv
 Makefile
 *.db
+!static/package.json
+!static/package-lock.json
