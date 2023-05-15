@@ -39,6 +39,7 @@ from .record_edit import RecordEditMixin
 from .. import api, utils, vault_extensions, vault, record_management, crypto, rest_api
 from ..display import bcolors
 from ..error import CommandError
+from ..loginv3 import CommonHelperMethods
 from ..params import KeeperParams, LAST_RECORD_UID
 from ..proto import pam_pb2, router_pb2, record_pb2
 from ..subfolder import find_parent_top_folder
@@ -1099,8 +1100,10 @@ class PAMKCMTunnelStartCommand(Command):
 
         encrypted_transmission_key_str = bytes_to_base64(encrypted_transmission_key)
         encrypted_session_token_str = bytes_to_base64(encrypted_session_token)
+        record_uid_bytes_url_safe_str = CommonHelperMethods.bytes_to_url_safe_str(record_uid_bytes)
+        gateway_uid_bytes_url_safe_str = CommonHelperMethods.bytes_to_url_safe_str(gateway_uid_bytes) if gateway_uid_bytes else None
 
-        start_local_server(encrypted_session_token_str, encrypted_transmission_key_str)
+        start_local_server(encrypted_session_token_str, encrypted_transmission_key_str, record_uid_bytes_url_safe_str, gateway_uid_bytes_url_safe_str)
 
 
 class PAMGatewayActionRotateCommand(Command):

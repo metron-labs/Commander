@@ -6,12 +6,14 @@ const queryParams = getQueryParams();
 const sessionToken = queryParams['sessionToken'];
 const transmissionKey = queryParams['transmissionKey'];
 const recordUid = queryParams['recordUid'];
+const gatewayUid = queryParams['gatewayUid'];
 
 
 console.log("queryParams: [" + queryParams + "]");
 console.log("sessionToken: [" + sessionToken + "]");
 console.log("transmissionKey: [" + transmissionKey + "]");
 console.log("recordUid: [" + recordUid + "]");
+console.log("gatewayUid: [" + gatewayUid + "]")
 
 
 // Construct the tunnelUrl
