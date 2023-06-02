@@ -2,6 +2,8 @@
 
 
 // Get query parameters
+import Guacamole from "guacamole-common-js";
+
 const queryParams = getQueryParams();
 const sessionToken = queryParams['sessionToken'];
 const transmissionKey = queryParams['transmissionKey'];
@@ -17,10 +19,8 @@ console.log("gatewayUid: [" + gatewayUid + "]")
 
 
 // Construct the tunnelUrl
-const tunnelUrl = "wss://localhost:5001/client?Authorization=KeeperUser%20" + sessionToken + "&TransmissionKey=" + transmissionKey + "&RecordUid=" + recordUid;
+const tunnelUrl = "wss://localhost:5001/client?Authorization=KeeperUser%20" + sessionToken + "&TransmissionKey=" + transmissionKey + "&RecordUid=" + recordUid + "key=" + "RECORD_KEY";
 
-
-// Configure the Guacamole client
 const guac = new Guacamole.Client(new Guacamole.WebSocketTunnel(tunnelUrl));
 
 // Get the display div element
