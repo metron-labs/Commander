@@ -32,7 +32,7 @@ from .pam.kcm_helper import start_local_server
 from .pam.pam_dto import GatewayActionGatewayInfo, GatewayActionDiscoverInputs, GatewayActionDiscover, \
     GatewayActionRotate, \
     GatewayActionRotateInputs, GatewayAction, GatewayActionJobInfoInputs, \
-    GatewayActionJobInfo, GatewayActionJobCancel
+    GatewayActionJobInfo, GatewayActionJobCancel, GatewayActionTry
 from .pam.router_helper import router_send_action_to_gateway, print_router_response, \
     router_get_connected_gateways, router_set_record_rotation_information, router_get_rotation_schedules, get_router_url
 from .record_edit import RecordEditMixin
@@ -93,6 +93,7 @@ class PAMKCMTunnelCommand(GroupCommand):
     def __init__(self):
         super(PAMKCMTunnelCommand, self).__init__()
         self.register_command('start', PAMKCMTunnelStartCommand(), 'Start KCM Tunnel', 's')
+        self.register_command('try', PAMKCMTryCommand(), 'Try KCM Tunnel Connection', 'try')
 
 
 class PAMRotationCommand(GroupCommand):
@@ -1071,6 +1072,24 @@ class PAMGatewayActionJobCommand(Command):
         print_router_response(router_response, original_conversation_id=conversation_id, response_type='job_info')
 
 
+class PAMKCMTryCommand(Command):
+    parser = argparse.ArgumentParser(prog='pam-kcm-tunnel-try-command')
+
+    def get_parser(self):
+        return PAMKCMTryCommand.parser
+
+    def execute(self, params, **kwargs):
+
+            conversation_id = GatewayAction.generate_conversation_id()
+            router_response = router_send_action_to_gateway(
+                params=params,
+                gateway_action=GatewayActionTry(conversation_id=conversation_id),
+                message_type=pam_pb2.CMT_GENERAL,
+                is_streaming=False
+            )
+            print_router_response(router_response, conversation_id)
+
+
 class PAMKCMTunnelStartCommand(Command):
 
     parser = argparse.ArgumentParser(prog='pam-kcm-tunnel-start-command')
@@ -1098,6 +1117,7 @@ class PAMKCMTunnelStartCommand(Command):
 
         encrypted_session_token = crypto.encrypt_aes_v2(utils.base64_url_decode(params.session_token), transmission_key)
 
+        print("Session Token: " + params.session_token)
         encrypted_transmission_key_str = bytes_to_base64(encrypted_transmission_key)
         encrypted_session_token_str = bytes_to_base64(encrypted_session_token)
         record_uid_bytes_url_safe_str = CommonHelperMethods.bytes_to_url_safe_str(record_uid_bytes)

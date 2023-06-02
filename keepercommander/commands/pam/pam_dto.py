@@ -39,6 +39,7 @@ class GatewayAction(metaclass=abc.ABCMeta):
         self.gateway_destination = gateway_destination
         self.inputs = inputs
         self.conversationId = conversation_id
+        self.type = "GENERAL"
 
     def toJSON(self):
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
@@ -143,6 +144,16 @@ class GatewayActionListAccessRecords(GatewayAction):
 
     def __init__(self, conversation_id=None):
         super().__init__('list-access-records', conversation_id=conversation_id, is_scheduled=False)
+
+    def toJSON(self):
+        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
+
+
+class GatewayActionTry(GatewayAction):
+
+    def __init__(self, conversation_id=None, gateway_destination=None):
+        super().__init__('guactunnel', conversation_id=conversation_id, gateway_destination=gateway_destination,
+                         is_scheduled=True)
 
     def toJSON(self):
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
