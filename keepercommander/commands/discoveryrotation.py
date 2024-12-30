@@ -77,6 +77,15 @@ from .pam_debug.gateway import PAMDebugGatewayCommand
 from .pam_service.list import PAMActionServiceListCommand
 from .pam_service.add import PAMActionServiceAddCommand
 from .pam_service.remove import PAMActionServiceRemoveCommand
+from .remote_management.create_user import RmCreateUserCommand
+from .remote_management.delete_user import RmDeleteUserCommand
+from .remote_management.get_roles import RmGetRolesCommand
+from .remote_management.get_groups import RmGetGroupsCommand
+from .remote_management.add_user_to_role import RmAddUserToRoleCommand
+from .remote_management.add_user_to_group import RmAddUserToGroupCommand
+from .remote_management.remove_user_from_role import RmRemoveUserFromRoleCommand
+from .remote_management.remove_user_from_group import RmRemoveUserFromGroupCommand
+from .remote_management.run_script import RmRunScriptCommand
 
 
 def register_commands(commands):
@@ -122,6 +131,43 @@ class PAMTunnelCommand(GroupCommand):
         self.register_command('tail', PAMTunnelTailCommand(), 'View Tunnel Log', 't')
         self.register_command('edit', PAMTunnelEditCommand(), 'Edit Tunnel settings', 'e')
         self.default_verb = 'list'
+
+class RmCommand(GroupCommand):
+
+    def __init__(self):
+        super(RmCommand, self).__init__()
+        self.register_command('group', RmGroupCommand(), 'Group Commands', 'g')
+        self.register_command('role', RmRoleCommand(), 'Role Commands', 'r')
+        self.register_command('user', RmUserCommand(), 'User Commands', 'u')
+        self.register_command('script', RmRunScriptCommand(), 'Run Script', 's')
+
+
+class RmRoleCommand(GroupCommand):
+
+    def __init__(self):
+        super(RmRoleCommand, self).__init__()
+        self.register_command('list', RmGetRolesCommand(), 'Get Roles', 'l')
+        self.register_command('add-user', RmAddUserToRoleCommand(), 'Add user to role', 'a')
+        self.register_command('remove-user', RmRemoveUserFromRoleCommand(), 'Remove user from role', 'r')
+        self.default_verb = 'list'
+
+
+class RmGroupCommand(GroupCommand):
+
+    def __init__(self):
+        super(RmGroupCommand, self).__init__()
+        self.register_command('list', RmGetGroupsCommand(), 'Get Roles', 'l')
+        self.register_command('add-user', RmAddUserToGroupCommand(), 'Add user to group', 'a')
+        self.register_command('remove-user', RmRemoveUserFromGroupCommand(), 'Remove user from group', 'r')
+        self.default_verb = 'list'
+
+
+class RmUserCommand(GroupCommand):
+
+    def __init__(self):
+        super(RmUserCommand, self).__init__()
+        self.register_command('add', RmCreateUserCommand(), 'Add User', 'a')
+        self.register_command('delete', RmDeleteUserCommand(), 'Delete User', 'd')
 
 
 class PAMConfigurationsCommand(GroupCommand):
@@ -196,6 +242,7 @@ class GatewayActionCommand(GroupCommand):
         self.register_command('service', PAMActionServiceCommand(),
                               'Manage services and scheduled tasks user mappings.', 's')
         self.register_command('debug', PAMDebugCommand(), 'PAM debug information')
+        self.register_command('remote', RmCommand(), 'Remove Management Demo')
 
         # self.register_command('job-list', DRCmdListJobs(), 'List Running jobs')
 
