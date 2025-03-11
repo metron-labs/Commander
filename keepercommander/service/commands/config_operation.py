@@ -11,8 +11,9 @@
 
 import argparse
 from keepercommander.params import KeeperParams
-from ..config.service_config import ServiceConfig
+# from ..config.service_config import ServiceConfig
 from keepercommander.commands.base import report_output_parser, Command
+
 from ..core.globals import init_globals
 from ..decorators.logging import logger, debug_decorator
 
@@ -24,6 +25,7 @@ class AddConfigService(Command):
         return parser
         
     def execute(self, params: KeeperParams, **kwargs) -> str:
+        from keepercommander.service.config.service_config import ServiceConfig
         init_globals(params)
         try:
             logger.debug("Loading existing configuration")

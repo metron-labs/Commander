@@ -21,8 +21,14 @@ class SecurityConfigHandler(Command):
     def __init__(self, service_config: ServiceConfig):
         self.service_config = service_config
         self.config = ConfigParser()
-        config_path = Path(__file__).parent.parent / 'config' / 'config.ini'
-        self.config.read(config_path)
+        # config_path = Path(__file__).parent.parent / 'config' / 'config.ini'
+        home_dir = Path.home()
+        keeper_dir = home_dir / ".keeper"
+        keeper_dir.mkdir(parents=True, exist_ok=True)  #  Create ~/.keeper if missing
+
+        config_ini_path = keeper_dir / 'config.ini'
+
+        self.config.read(config_ini_path)
         self.messages = self.config['Messages']
         self.validation_messages = self.config['Validation_Messages']
 

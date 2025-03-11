@@ -10,10 +10,16 @@
 #
 
 import io
+import os
+from pathlib import Path
 import sys
 import json
 from typing import Any, Tuple, Optional
-from keepercommander import cli
+
+from flask import jsonify
+from keepercommander import api, cli
+from keepercommander.__main__ import get_params_from_config
+from keepercommander.commands.utils import LoginCommand
 from .exceptions import CommandExecutionError
 from .config_reader import ConfigReader
 from ..core.globals import get_current_params
@@ -64,22 +70,40 @@ class CommandExecutor:
         return response
 
     @classmethod
-    def execute(cls, command: str) -> Tuple[Any, int]:
+    def execute(cls, command: str, user_info: dict) -> Tuple[Any, int]:
         logger.debug(f"Executing command: {command}")
-        
         validation_error = cls.validate_command(command)
         if validation_error:
             return validation_error
 
-        session_error = cls.validate_session()
-        if session_error:
-            return session_error
+        home_dir = Path.home()  # Gets the home directory
+        keeper_dir = home_dir / ".keeper"
+        keeper_dir.mkdir(parents=True, exist_ok=True)
 
+        config_path = keeper_dir / f"config.json"
+
+        my_params = get_params_from_config(config_path)
+
+        if not my_params:
+            return jsonify({"error": "No active sessions. Please log in through the CLI first."}), 401
+
+        if user_info and "password" in user_info:
+            my_params.config["password"] = user_info["password"]
+            my_params.password = user_info["password"]
+
+        params = my_params
+
+        LoginCommand().execute(params, email=params.user, password=params.password, new_login=False)
+        
+        from ..core.globals import init_globals
+        init_globals(params)
         params = get_current_params()
+        
         try:
             return_value, printed_output = cls.capture_output(params, command)
             response = return_value if return_value else printed_output
 
+            
             cli.do_command(params, 'sync-down')
             
             response = parse_keeper_response(command, response)

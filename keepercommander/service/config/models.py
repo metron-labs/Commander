@@ -21,6 +21,8 @@ class ServiceConfigData:
     ngrok_auth_token: str
     ngrok_public_url: str
     is_advanced_security_enabled: str
+    username: str
+    password: str
     rate_limiting: str
     ip_denied_list: str
     encryption: str

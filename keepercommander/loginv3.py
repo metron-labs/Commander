@@ -46,7 +46,8 @@ class LoginV3Flow:
     def login(self, params, new_device=False, new_login=False):   # type: (KeeperParams, bool, bool) -> None
 
         logging.debug("Login v3 Start as '%s'", params.user)
-
+        
+        
         encryptedDeviceToken = LoginV3API.get_device_id(params, new_device)
 
         if new_login:
@@ -60,9 +61,7 @@ class LoginV3Flow:
             login_type = 'ALTERNATE'
 
         resp = LoginV3API.startLoginMessage(params, encryptedDeviceToken, cloneCode=clone_code_bytes, loginType=login_type)
-
         is_alternate_login = False
-
         while True:
             if resp.loginState == APIRequest_pb2.DEVICE_APPROVAL_REQUIRED:  # client goes to “standard device approval”.
                 should_cancel = False
@@ -854,11 +853,15 @@ class LoginV3API:
             rq.cloneCode = cloneCode
             rq.username = ''
 
+        
+        
         api_request_payload = APIRequest_pb2.ApiRequestPayload()
         api_request_payload.payload = rq.SerializeToString()
 
+        
         rs = rest_api.execute_rest(params.rest_context, 'authentication/start_login', api_request_payload)
 
+        
         if type(rs) == bytes:
             login_resp = APIRequest_pb2.LoginResponse()
             login_resp.ParseFromString(rs)

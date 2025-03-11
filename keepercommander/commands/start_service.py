@@ -9,9 +9,9 @@
 # Contact: ops@keepersecurity.com
 #
 
-from ..service.commands.create_service import CreateService
-from ..service.commands.config_operation import AddConfigService
-from ..service.commands.handle_service import StartService, StopService, ServiceStatus
+from keepercommander.service.commands.config_operation import AddConfigService
+from keepercommander.service.commands.create_service import CreateService
+from keepercommander.service.commands.handle_service import ServiceStatus, StartService, StopService
 
 def register_commands(commands):
     commands['service-create'] = CreateService()

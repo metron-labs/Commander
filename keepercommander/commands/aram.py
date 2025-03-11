@@ -175,7 +175,7 @@ API_EVENT_SUMMARY_ROW_LIMIT = 2000
 API_EVENT_RAW_ROW_LIMIT = 1000
 
 
-def load_syslog_templates(params):
+def load_syslog_templates(paramss):
     global syslog_templates
     if syslog_templates is None:
         syslog_templates = {}
