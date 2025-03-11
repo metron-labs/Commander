@@ -15,14 +15,14 @@ from pathlib import Path
 from typing import Dict, Any
 from ..decorators.logging import logger
 from ..util.exceptions import ValidationError
-from .cli_handler import CommandHandler
+
 
 class ConfigFormatHandler:
     def __init__(self, config_dir: Path, messages: Dict, validation_messages: Dict):
         self.config_dir = config_dir
         self.messages = messages
         self.validation_messages = validation_messages
-        self.cli_handler = CommandHandler()
+        # self.cli_handler = 
         self._config_path = None
 
     @property
@@ -35,8 +35,17 @@ class ConfigFormatHandler:
         """Get the configuration file path based on what exists."""
         format_type = self.get_config_format()
         logger.debug(f"Getting config path for format: {format_type}")
-        base_path = self.config_dir / 'service_config'
-        return base_path.with_suffix(f'.{format_type}')
+        # base_path = self.config_dir / 'service_config'
+
+
+        home_dir = Path.home()  # Gets the home directory
+        keeper_dir = home_dir / ".keeper"
+        keeper_dir.mkdir(parents=True, exist_ok=True)
+
+        config_path = keeper_dir / f"service_config.{format_type}"
+
+        return config_path
+        # return base_path.with_suffix(f'.{format_type}')
 
     def get_config_format(self, save_type: str = None) -> str:
         """Get configuration format based on existing files."""
@@ -50,7 +59,9 @@ class ConfigFormatHandler:
             
         from ..core.globals import get_current_params
         if params := get_current_params():
-            if self.cli_handler.download_config_from_vault(params, 'Commander Service Mode', self.config_dir):
+            from .cli_handler import CommandHandler
+            cli_handler = CommandHandler()
+            if cli_handler.download_config_from_vault(params, 'Commander Service Mode', self.config_dir):
                 if json_path.exists():
                     return 'json'
                 if yaml_path.exists():
@@ -71,8 +82,16 @@ class ConfigFormatHandler:
         format_type = self.get_config_format(save_type)
         logger.debug(f"Saving config in format: {format_type}")
 
-        base_path = self.config_dir / 'service_config'
-        config_path = base_path.with_suffix(f'.{format_type}')
+        # base_path = self.config_dir / 'service_config'
+        # config_path = base_path.with_suffix(f'.{format_type}')
+
+
+        home_dir = Path.home()  # Gets the home directory
+        keeper_dir = home_dir / ".keeper"
+        keeper_dir.mkdir(parents=True, exist_ok=True)  #  Create ~/.keeper if it doesn't exist
+
+        config_path = keeper_dir / f"service_config.{format_type}"
+
         
         try:
             if format_type == 'json':

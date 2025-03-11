@@ -9,6 +9,8 @@
 # Contact: ops@keepersecurity.com
 #
 
+import json
+import os
 from pathlib import Path
 from typing import Dict, Any, Optional
 from configparser import ConfigParser
@@ -23,13 +25,23 @@ class ServiceConfig:
         self.title = title
         
         self.config = ConfigParser()
-        config_ini_path = Path(__file__).parent / 'config.ini'
+
+        home_dir = Path.home()
+        keeper_dir = home_dir / ".keeper"
+        keeper_dir.mkdir(parents=True, exist_ok=True)  #  Create ~/.keeper if missing
+
+        config_ini_path = keeper_dir / 'config.ini'
         self.config.read(config_ini_path)
+
+        # config_ini_path = Path(__file__).parent / 'config.ini'
+        # self.config.read(config_ini_path)
+        
         self.messages = self.config['Messages']
+
         self.validation_messages = self.config['Validation_Messages']
 
         self.format_handler = ConfigFormatHandler(
-            config_dir=Path(__file__).parent,
+            config_dir=keeper_dir,
             messages=self.messages,
             validation_messages=self.validation_messages
         )
@@ -78,6 +90,8 @@ class ServiceConfig:
             ngrok_auth_token="",
             ngrok_public_url="",
             is_advanced_security_enabled="n",
+            username="",
+            password=None,
             rate_limiting="",
             ip_denied_list="",
             encryption="",
@@ -158,3 +172,28 @@ class ServiceConfig:
     def update_or_add_record(self, params: KeeperParams) -> None:
         """Update existing record or add new one."""
         self.record_handler.update_or_add_record(params, self.title, self.format_handler.config_path)
+
+    def remove_password_from_service_config(self):
+        """Loads `service_config.json` from `~/.keeper/`, removes the stored password, and saves it back."""
+
+        config_path = Path.home() / ".keeper" / "service_config.json"
+
+        if not config_path.exists():
+            print(f" Error: {config_path} not found.")
+            return
+
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                config_data = json.load(f)
+
+            if "password" in config_data:
+                config_data["password"] = None  # or "" if you prefer empty string
+
+            with open(config_path, "w", encoding="utf-8") as f:
+                json.dump(config_data, f, indent=4)
+
+            print(f" Password removed from {config_path}")
+
+        except Exception as e:
+            print(f" Error modifying {config_path}: {str(e)}")
+

@@ -9,10 +9,19 @@
 # Contact: ops@keepersecurity.com
 #
 
+import json
+import sys
 from flask import Blueprint, request, jsonify
 from html import escape
 from ..decorators.unified import unified_api_decorator
 from ..util.command_util import CommandExecutor
+
+user_info = {}
+if len(sys.argv) > 1:  # Check if an argument is passed
+    try:
+        user_info = json.loads(sys.argv[1])  # Parse JSON string into a dictionary
+    except json.JSONDecodeError as e:
+        print("Error decoding parameters:", str(e))
 
 def create_command_blueprint():
     """Create Blue Print for Keeper Commander Service."""
@@ -24,7 +33,7 @@ def create_command_blueprint():
         try:
             request_command = request.json.get("command")
             command = escape(request_command)
-            response, status_code = CommandExecutor.execute(command)
+            response, status_code = CommandExecutor.execute(command, user_info)
             return response if isinstance(response, bytes) else jsonify(response), status_code
         except Exception as e:
             return jsonify({"success": False, "error": f"{str(e)}"}), 500

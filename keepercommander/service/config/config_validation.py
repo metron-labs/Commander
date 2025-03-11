@@ -16,6 +16,7 @@ from typing import Any
 from datetime import timedelta
 from ..decorators.logging import logger, debug_decorator
 from ..util.exceptions import ValidationError
+from keepercommander.params import KeeperParams
 
 class ConfigValidator:
     """Validator class for service configuration"""
@@ -168,3 +169,19 @@ class ConfigValidator:
             
         logger.debug(f"Successfully parsed expiration time to {result}")
         return result
+    
+    @staticmethod
+    def validate_username(username: Any, params: KeeperParams) -> int:
+        """Validate username"""
+        try:
+            username = str(username)
+            logger.debug(f"Validating username: {username}")
+            if params.user == username:
+                return username
+            else:
+                msg = "Invalid Username"
+                raise ValidationError(msg)
+            
+        except ValueError:
+            msg = "Please provide valid Username"
+            raise ValidationError(msg)

@@ -1,22 +1,28 @@
 import sys
+from unittest import mock
 if sys.version_info >= (3, 8):
     import unittest
-    from unittest.mock import patch, MagicMock
+    from unittest.mock import patch, MagicMock, mock_open
     import json
+    from pathlib import Path
     from keepercommander.params import KeeperParams
     from keepercommander.service.config.service_config import ServiceConfig
     from keepercommander.service.util.exceptions import ValidationError
+    from keepercommander.service.config.models import ServiceConfigData
 
     class TestServiceConfig(unittest.TestCase):
         def setUp(self):
+            """Setup default test configuration"""
             self.service_config = ServiceConfig()
             self.test_config = {
                 "title": "Commander Service Mode",
                 "port": 8000,
-                "ngrok": "n",
+                "ngrok": "n",  #  Ensure this exists
                 "ngrok_auth_token": "",
                 "ngrok_public_url": "",
                 "is_advanced_security_enabled": "n",
+                "username": "test_user",  #  Added required fields
+                "password": "test_pass",  #  Added required fields
                 "rate_limiting": "",
                 "ip_denied_list": "",
                 "encryption": "",
@@ -32,6 +38,19 @@ if sys.version_info >= (3, 8):
             self.assertEqual(config["ngrok"], "n")
             self.assertEqual(config["ngrok_auth_token"], "")
             self.assertEqual(config["is_advanced_security_enabled"], "n")
+            self.assertIn("username", config)  #  Ensure username is present
+            self.assertIn("password", config)  #  Ensure password is present
+
+        def test_validate_config_structure(self):
+            """Test validation of config structure."""
+            valid_data = self.test_config.copy()  #  Ensure `ngrok` exists
+            try:
+                ServiceConfigData(**valid_data)  #  Ensure all required fields exist
+            except TypeError as e:
+                self.fail(f"ServiceConfigData validation failed: {e}")
+
+            with self.assertRaises(ValidationError):
+                self.service_config._validate_config_structure({})  # Empty dict should fail
 
         def test_save_config_success(self):
             """Test successful configuration save."""
@@ -124,3 +143,20 @@ if sys.version_info >= (3, 8):
             mock_record_handler.update_or_add_record.assert_called_once_with(
                 params, self.service_config.title, self.service_config.config_path
             )
+
+        @patch("pathlib.Path.exists", return_value=True)
+        @patch("builtins.open", new_callable=mock.mock_open, read_data=json.dumps({"password": "test_pass"}))
+        def test_remove_password_from_service_config(self, mock_open_file, mock_exists):
+            """Test removing password from service_config.json"""
+            config_path = Path.home() / ".keeper" / "service_config.json"
+
+            with patch("json.dump") as mock_json_dump:
+                ServiceConfig.remove_password_from_service_config(self)  #  Call as static method
+                mock_json_dump.assert_called()
+                args, _ = mock_json_dump.call_args
+                updated_config = args[0]
+                assert updated_config.get("password") is None  #  Ensures password is removed
+
+
+    if __name__ == '__main__':
+        unittest.main()

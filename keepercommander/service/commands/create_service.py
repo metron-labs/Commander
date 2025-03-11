@@ -13,7 +13,6 @@ import argparse
 from typing import Dict, Any
 from keepercommander.params import KeeperParams
 from keepercommander.commands.base import report_output_parser, Command
-from ..config.service_config import ServiceConfig
 from ..config.config_validation import ValidationError
 from ..decorators.logging import logger, debug_decorator
 from dataclasses import dataclass
@@ -24,11 +23,14 @@ class StreamlineArgs:
     port: Optional[int]
     commands: Optional[str]
     ngrok: Optional[str]   
+    username: Optional[str]
+    password: Optional[str]
 
 class CreateService(Command):
     """Command to create a new service configuration."""
     
     def __init__(self):
+        from keepercommander.service.config.service_config import ServiceConfig
         self.service_config = ServiceConfig()
         self._config_handler = None
         self._security_handler = None
@@ -53,6 +55,10 @@ class CreateService(Command):
         parser.add_argument('-p', '--port', type=int, help='port number for the service (required)')
         parser.add_argument('-c', '--commands', type=str, help='command list for policy')
         parser.add_argument('-ng', '--ngrok', type=str, help='ngrok auth token to generate public URL (optional)')
+
+        #  New arguments for username and password
+        parser.add_argument('-u', '--username', type=str, help='Username for authentication')
+        parser.add_argument('-pw', '--password', type=str, help='Password for authentication')
         return parser
     
     def execute(self, params: KeeperParams, **kwargs) -> None:
@@ -67,11 +73,13 @@ class CreateService(Command):
 
             config_data = self.service_config.create_default_config()
 
-            filtered_kwargs = {k: v for k, v in kwargs.items() if k in ['port', 'commands', 'ngrok']}
+            filtered_kwargs = {k: v for k, v in kwargs.items() if k in ['port', 'commands', 'ngrok', 'username', 'password']}
             args = StreamlineArgs(**filtered_kwargs)
+
+            
             self._handle_configuration(config_data, params, args)
             self._create_and_save_record(config_data, params, args)
-            self._upload_and_start_service(params)
+            self._upload_and_start_service(params, args, config_data)
 
         except ValidationError as e:
             print(f"Validation Error: {str(e)}")
@@ -93,7 +101,15 @@ class CreateService(Command):
         config_data["records"] = [record]
         self.service_config.save_config(config_data, 'create')
         
-    def _upload_and_start_service(self, params: KeeperParams) -> None:
+    def _upload_and_start_service(self, params: KeeperParams, args: StreamlineArgs, config_data: Dict[str, Any]) -> None:
+
+
+        print("Saved config file successfully in the .keeper folder")
         self.service_config.update_or_add_record(params)
         from ..core.service_manager import ServiceManager
-        ServiceManager.start_service()
+        if config_data:
+            print("Config data before sending it start service", config_data)
+            ServiceManager.start_service(config_data)  # Pass `config_data` as fallback
+        else:
+            ServiceManager.start_service(args)
+        
