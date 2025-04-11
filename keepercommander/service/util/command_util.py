@@ -10,10 +10,12 @@
 #
 
 import io
+from pathlib import Path
 import sys
 import json
 from typing import Any, Tuple, Optional
-from keepercommander import cli
+from keepercommander import cli, utils
+from keepercommander.__main__ import get_params_from_config
 from .exceptions import CommandExecutionError
 from .config_reader import ConfigReader
 from ..core.globals import get_current_params
@@ -71,11 +73,9 @@ class CommandExecutor:
         if validation_error:
             return validation_error
 
-        session_error = cls.validate_session()
-        if session_error:
-            return session_error
+        config_path = utils.get_default_path() / "config.json"
+        params = get_params_from_config(config_path)
 
-        params = get_current_params()
         try:
             return_value, printed_output = cls.capture_output(params, command)
             response = return_value if return_value else printed_output

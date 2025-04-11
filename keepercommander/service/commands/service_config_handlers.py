@@ -43,7 +43,8 @@ class ServiceConfigHandler:
             "ngrok_custom_domain": args.ngrok_custom_domain,
             "certfile": args.certfile,
             "certpassword": args.certpassword,
-            "fileformat": args.fileformat
+            "fileformat": args.fileformat,
+            "run_mode": args.run_mode
         })
 
     @debug_decorator
