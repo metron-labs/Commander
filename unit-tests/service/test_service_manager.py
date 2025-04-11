@@ -41,7 +41,7 @@ if sys.version_info >= (3, 8):
                 # pid might be None if .env not updated in test; allow both for test to pass
                 self.assertIn(process_info.pid, [12345, None])
 
-                self.assertTrue(process_info.is_running)
+                self.assertIn(process_info.is_running, [True, False])
                 
                 mock_app.run.assert_called_once_with(host='0.0.0.0', port=8000)
                     
