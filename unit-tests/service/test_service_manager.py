@@ -21,13 +21,23 @@ if sys.version_info >= (3, 8):
             if ProcessInfo._env_file.exists():
                 ProcessInfo._env_file.unlink()
                 
-        def test_start_service_when_not_running(self):
+        @mock.patch('os.getenv')
+        def test_start_service_when_not_running(self, mock_getenv):
             """Test starting service when no existing service is running"""
             with mock.patch('keepercommander.service.core.service_manager.ServiceConfig') as mock_config, \
                 mock.patch('os.getpid', return_value=12345), \
                 mock.patch('keepercommander.service.app.create_app') as mock_create_app, \
                 mock.patch('keepercommander.service.core.terminal_handler.TerminalHandler.get_terminal_info', return_value="/dev/test"):
                 
+                # Set return values for getenv calls
+                def getenv_side_effect(key, default=None):
+                    return {
+                        'KEEPER_SERVICE_PID': '12345',
+                        'KEEPER_SERVICE_TERMINAL': '/dev/test',
+                        'KEEPER_SERVICE_IS_RUNNING': 'true'
+                    }.get(key, default)
+
+                mock_getenv.side_effect = getenv_side_effect
                 mock_config.return_value.load_config.return_value = {"port": 8000}
                 
                 mock_app = mock.Mock()
@@ -44,7 +54,7 @@ if sys.version_info >= (3, 8):
                     
         def test_start_service_when_already_running(self):
             """Test starting service when another instance is already running"""
-            ProcessInfo.save(True)
+            ProcessInfo.save(pid=12345, is_running=True)
             with mock.patch('os.getpid', return_value=12345), \
                 mock.patch('psutil.Process') as mock_process:
                 mock_process.return_value.is_running.return_value = True
@@ -56,7 +66,7 @@ if sys.version_info >= (3, 8):
                     
         def test_stop_service_when_running(self):
             """Test stopping a running service"""
-            ProcessInfo.save(True)
+            ProcessInfo.save(pid=12345, is_running=True)
             
             with mock.patch('os.getpid', return_value=9999), \
                 mock.patch('keepercommander.service.core.terminal_handler.TerminalHandler.get_terminal_info', return_value="/dev/pts/0"), \
@@ -77,7 +87,7 @@ if sys.version_info >= (3, 8):
                 
         def test_service_status_when_running(self):
             """Test getting status of running service"""
-            ProcessInfo.save(True)
+            ProcessInfo.save(pid=12345, is_running=True)
             with mock.patch('os.getpid', return_value=12345), \
                 mock.patch('psutil.Process') as mock_process, \
                 mock.patch('keepercommander.service.core.terminal_handler.TerminalHandler.get_terminal_info', return_value="unknown terminal"):
@@ -94,7 +104,7 @@ if sys.version_info >= (3, 8):
             status_cmd = ServiceStatus()
             with mock.patch('builtins.print') as mock_print:
                 status_cmd.execute(self.params)
-                mock_print.assert_called_with("Current status: Commander Service is Stopped")
+                mock_print.assert_called_with("Current status: No Commander Service is running currently")
 
         def test_process_info_save_load(self):
             """Test ProcessInfo save and load operations"""
@@ -102,7 +112,7 @@ if sys.version_info >= (3, 8):
             test_terminal = "/dev/test"
             
             with mock.patch('os.getpid', return_value=test_pid):
-                ProcessInfo.save(is_running=True)
+                ProcessInfo.save(pid=12345, is_running=True)
                 
                 loaded_info = ProcessInfo.load()
                 self.assertEqual(loaded_info.pid, test_pid)
@@ -113,7 +123,7 @@ if sys.version_info >= (3, 8):
             ServiceManager._is_running = True
             ServiceManager._flask_app = mock.Mock()
             
-            ProcessInfo.save(is_running=True)
+            ProcessInfo.save(pid=12345, is_running=True)
             
             ServiceManager._handle_shutdown()
             
