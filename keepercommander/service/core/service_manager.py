@@ -39,6 +39,24 @@ class ServiceManager:
         cls._flask_app = None
         ProcessInfo.clear()
 
+    @staticmethod
+    def get_ssl_context(config_data):
+        """
+        Get SSL context from configuration data if certificates are available.
+        Returns None if no valid certificates are found.
+        """
+        ssl_context = None
+        if config_data.get("certfile") and config_data.get("certpassword"):
+            certfile = utils.get_default_path() / config_data.get("certfile")
+            certpassword = utils.get_default_path() / config_data.get("certpassword")
+            
+            if os.path.exists(certfile) and os.path.exists(certpassword):
+                logger.debug('Using SSL certificates')
+                ssl_context = (certfile, certpassword)
+        
+        return ssl_context
+
+    
     @classmethod
     def start_service(cls) -> None:
         """Start the service if not already running."""
@@ -75,8 +93,7 @@ class ServiceManager:
 
                 base_dir = os.path.dirname(os.path.abspath(__file__))
                 service_path = os.path.join(base_dir, "service_app.py")
-                print(f"Starting Flask process at: {service_path}")  # Debugging line
-                
+
                 if sys.platform == "win32":
                     DETACHED_PROCESS = 0x00000008
                     flask_process = subprocess.Popen(
@@ -96,23 +113,15 @@ class ServiceManager:
                 from keepercommander.service.app import create_app
                 cls._flask_app = create_app()
                 cls._is_running = True
+
+                ssl_context = ServiceManager.get_ssl_context(config_data)
                 
-                if config_data.get("certfile") and config_data.get("certpassword"):
-                    certfile =  utils.get_default_path() / config_data.get("certfile")
-                    certpassword = utils.get_default_path() / config_data.get("certpassword")
-
-                    if certfile and certpassword:   
-                        cls._flask_app.run(
-                            host='0.0.0.0',
-                            port=port,
-                            ssl_context=(certfile, certpassword)
-                        )
-                    else:
-                        cls._flask_app.run(host='0.0.0.0', port=port)  # Fallback: no TLS
-                else:
-                    cls._flask_app.run(host='0.0.0.0', port=port)  # No certs provided: no TLS
-
-
+                cls._flask_app.run(
+                    host='0.0.0.0',
+                    port=port,
+                    ssl_context=ssl_context
+                )
+                
             # Save the process ID for future reference
             ProcessInfo.save(cls.pid, is_running)
             

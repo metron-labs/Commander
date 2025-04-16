@@ -78,12 +78,17 @@ class CommandExecutor:
         config_data = service_config.load_config()
 
         if config_data.get("run_mode") == "background":
-            config_path = utils.get_default_path() / "config.json"
-            params = get_params_from_config(config_path)
+            try:
+                config_path = utils.get_default_path() / "config.json"
+                params = get_params_from_config(config_path)
+            except FileNotFoundError:
+                logger.error(f"Config file not found at {config_path}")
+                raise
+            except Exception as e:
+                logger.error(f"Failed to load params from config file: {e}")
+                raise
         else:
-            logger.debug(f"Executing get_current_params method")
             params = get_current_params()
-            logger.debug(f"Params :- {vars(params)}")
 
         try:
             return_value, printed_output = cls.capture_output(params, command)
