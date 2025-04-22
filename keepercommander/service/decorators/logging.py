@@ -45,7 +45,7 @@ class GlobalLogger:
             )
             handler.setFormatter(formatter)
             self._logger.addHandler(handler)
-            self._logger.setLevel(logging.INFO) # Change for debug
+            self._logger.setLevel(logging.DEBUG) # Change for debug
 
     def set_level(self, level: LogLevel):
         self._logger.setLevel(level.value)
@@ -77,7 +77,7 @@ def debug_decorator(fn: Callable) -> Callable:
         
         value = fn(*args, **kwargs)
         
-        if logger._logger.isEnabledFor(logging.DEBUG):
+        if logger._logger.isEnabledFor(logging.INFO):
             logger.debug(f"Return: {fn.__name__} → {value!r}")
         
         return value
