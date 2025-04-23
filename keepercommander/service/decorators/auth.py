@@ -14,7 +14,7 @@ from flask import request
 from datetime import datetime
 from ..util.str_util import split_to_list
 from ..util.config_reader import ConfigReader
-from ..decorators.logging import debug_decorator
+from ..decorators.logging import debug_decorator, logger
 
 def auth_check(fn):
     @wraps(fn)
@@ -56,7 +56,7 @@ def policy_check(fn):
     def wrapper(*args, **kwargs):
         api_key = request.headers.get('api-key')
         policy = ConfigReader.read_config('command_list', api_key)
-        command = request.json.get("command")
+        command = request.json.get("command").split(" ")
         
         if not policy or not policy.strip():
             return {
@@ -65,7 +65,11 @@ def policy_check(fn):
             }, 403
 
         allowed_commands = split_to_list(policy, ',')
-        if not any(command.startswith(cmd.strip()) for cmd in allowed_commands):
+
+        logger.debug(f"allowed_commands : {allowed_commands}")
+        logger.debug(f"command[0] : {command[0]}")
+
+        if not any(command[0] == cmd.strip() for cmd in allowed_commands):
             return {
                 'status': 'fail',
                 'message': 'Not permitted to perform this function'
