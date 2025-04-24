@@ -56,18 +56,22 @@ def policy_check(fn):
     def wrapper(*args, **kwargs):
         api_key = request.headers.get('api-key')
         policy = ConfigReader.read_config('command_list', api_key)
-        command = request.json.get("command").split(" ")
-        
+        command_content = request.json.get("command")
+        if len(command_content) > 4096:
+            return {
+                'status': 'fail',
+                'message': 'Command length exceeded'
+            }, 400
+        command = command_content.split(" ")
         if not policy or not policy.strip():
             return {
                 'status': 'fail',
                 'message': 'Not permitted to perform this function'
             }, 403
-
         allowed_commands = split_to_list(policy, ',')
 
-        logger.debug(f"allowed_commands : {allowed_commands}")
-        logger.debug(f"command[0] : {command[0]}")
+        logger.debug(f"Allowed Commands : {allowed_commands}")
+        logger.debug(f"Command : {command[0]}")
 
         if not any(command[0] == cmd.strip() for cmd in allowed_commands):
             return {
