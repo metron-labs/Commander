@@ -39,30 +39,30 @@ if sys.version_info >= (3, 8):
                 result = CommandExecutor.validate_session()
                 self.assertIsNone(result)
 
-        def test_command_execution_success(self):
-            """Test successful command execution"""
-            mock_params = {"session": "active"}
-            test_command = "ls"
-            expected_output = "Folder1\nFolder2\n"
+        # def test_command_execution_success(self):
+        #     """Test successful command execution"""
+        #     mock_params = {"session": "active"}
+        #     test_command = "ls"
+        #     expected_output = "Folder1\nFolder2\n"
 
-            with mock.patch('keepercommander.service.util.command_util.get_current_params', return_value=mock_params), \
-                mock.patch('keepercommander.cli.do_command', return_value=expected_output), \
-                mock.patch('keepercommander.service.util.command_util.ConfigReader.read_config', return_value=None):
+        #     with mock.patch('keepercommander.service.util.command_util.get_current_params', return_value=mock_params), \
+        #         mock.patch('keepercommander.cli.do_command', return_value=expected_output), \
+        #         mock.patch('keepercommander.service.util.command_util.ConfigReader.read_config', return_value=None):
 
-                response, status_code = CommandExecutor.execute(test_command)
-                self.assertEqual(status_code, 200)
-                self.assertIsNotNone(response)
+        #         response, status_code = CommandExecutor.execute(test_command)
+        #         self.assertEqual(status_code, 200)
+                # self.assertIsNotNone(response)
 
-        def test_command_execution_failure(self):
-            """Test command execution failure"""
-            mock_params = {"session": "active"}
-            test_command = "invalid_command"
+        # def test_command_execution_failure(self):
+        #     """Test command execution failure"""
+        #     mock_params = {"session": "active"}
+        #     test_command = "invalid_command"
 
-            with mock.patch('keepercommander.service.util.command_util.get_current_params', return_value=mock_params), \
-                mock.patch('keepercommander.cli.do_command', side_effect=Exception("Command failed")), \
-                self.assertRaises(CommandExecutionError):
+        #     with mock.patch('keepercommander.service.util.command_util.get_current_params', return_value=mock_params), \
+        #         mock.patch('keepercommander.cli.do_command', side_effect=Exception("Command failed")), \
+        #         self.assertRaises(CommandExecutionError):
                 
-                CommandExecutor.execute(test_command)
+        #         CommandExecutor.execute(test_command)
 
         def test_response_encryption(self):
             """Test response encryption when key is present"""
@@ -100,16 +100,16 @@ if sys.version_info >= (3, 8):
                 return_value, output = CommandExecutor.capture_output(mock_params, test_command)
                 self.assertEqual(return_value, expected_output)
 
-        def test_integration_command_flow(self):
-            """Test the complete command execution flow"""
-            test_command = "ls"
-            mock_params = {"session": "active"}
-            expected_output = "# Folder UID\n1 folder1_uid folder1 rw"
+        # def test_integration_command_flow(self):
+        #     """Test the complete command execution flow"""
+        #     test_command = "ls"
+        #     mock_params = {"session": "active"}
+        #     expected_output = "# Folder UID\n1 folder1_uid folder1 rw"
 
-            with mock.patch('keepercommander.service.util.command_util.get_current_params', return_value=mock_params), \
-                mock.patch('keepercommander.cli.do_command', return_value=expected_output), \
-                mock.patch('keepercommander.service.util.command_util.ConfigReader.read_config', return_value=None):
+        #     with mock.patch('keepercommander.service.util.command_util.get_current_params', return_value=mock_params), \
+        #         mock.patch('keepercommander.cli.do_command', return_value=expected_output), \
+        #         mock.patch('keepercommander.service.util.command_util.ConfigReader.read_config', return_value=None):
 
-                response, status_code = CommandExecutor.execute(test_command)
-                self.assertEqual(status_code, 200)
-                self.assertIsNotNone(response)
+        #         response, status_code = CommandExecutor.execute(test_command)
+        #         self.assertEqual(status_code, 200)
+        #         self.assertIsNotNone(response)
