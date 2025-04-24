@@ -157,7 +157,6 @@ class ConfigFormatHandler:
             encrypted_content = encrypt_aes_v2(content.encode('utf-8'), hashed_key)
             with open(config_path, 'wb') as encrypted_file:
                 encrypted_file.write(encrypted_content)
-            logger.debug(f"Configuration file {config_path} encrypted successfully.")
         except Exception as e:
             raise ValidationError(f"Failed to encrypt configuration file: {str(e)}")
     
@@ -179,7 +178,6 @@ class ConfigFormatHandler:
                 raise ValidationError("Field 'private_key' not found in the configuration file.")
             hashed_key = sha256(private_key.encode('utf-8')).digest()
             encrypted_content = config_path.read_bytes()
-            logger.debug(f"Decrypting configuration {decrypt_aes_v2(encrypted_content, hashed_key).decode('utf-8')} ")
             return decrypt_aes_v2(encrypted_content, hashed_key).decode('utf-8')
         except Exception as e:
             raise ValidationError(f"Failed to decrypt configuration file: {str(e)}")

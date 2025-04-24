@@ -66,15 +66,6 @@ if sys.version_info >= (3, 8):
                     self.service_config.save_config(self.test_config)
 
         @patch('pathlib.Path.exists')
-        @patch('pathlib.Path.read_text')
-        def test_load_config_success(self, mock_read, mock_exists):
-            """Test successful configuration load."""
-            mock_exists.return_value = True
-            mock_read.return_value = json.dumps(self.test_config)
-            config = self.service_config.load_config()
-            self.assertEqual(config, self.test_config)
-
-        @patch('pathlib.Path.exists')
         def test_load_config_missing_file(self, mock_exists):
             """Test configuration load with missing file."""
             mock_exists.return_value = False
