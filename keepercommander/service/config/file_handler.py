@@ -82,8 +82,10 @@ class ConfigFormatHandler:
         try:
             if format_type == 'json':
                 logger.debug(f"Saving Configuration to JSON")
+                base_path.with_suffix(f'.yaml').unlink(missing_ok=True)
                 return self._save_json(config_data, config_path)
             logger.debug(f"Saving Configuration to YAML")
+            base_path.with_suffix(f'.json').unlink(missing_ok=True)
             return self._save_yaml(config_data, config_path)
         except IOError as e:
             raise ValidationError(f"Failed to save configuration: {str(e)}")
@@ -92,7 +94,7 @@ class ConfigFormatHandler:
         """Save configuration as JSON."""
         config_path.write_text(json.dumps(config_data, indent=4))
         logger.debug(f"Configuration saved to {config_path}")
-        self.encrypt_config_file()
+        self.encrypt_config_file(config_path, self.config_dir)
         return config_path
 
     def _save_yaml(self, config_data: Dict[str, Any], config_path) -> Path:
@@ -100,7 +102,7 @@ class ConfigFormatHandler:
         with open(config_path, 'w') as yaml_file:
             yaml.dump(config_data, yaml_file, default_flow_style=False)
         logger.debug(f"Configuration saved to {config_path}")
-        self.encrypt_config_file()
+        self.encrypt_config_file(config_path, self.config_dir)
         return config_path
 
     def load_config(self) -> Dict[str, Any]:
@@ -120,7 +122,7 @@ class ConfigFormatHandler:
     def _load_json(self) -> Dict[str, Any]:
         """Load configuration from JSON file."""
         try:
-            decrypted_content = self.decrypt_config_file()
+            decrypted_content = self.decrypt_config_file(self.config_path.read_bytes(), self.config_dir)
             return json.loads(decrypted_content)
         except Exception as e:
             raise ValidationError(f"Failed to decrypt configuration file: {str(e)}")
@@ -128,7 +130,7 @@ class ConfigFormatHandler:
     def _load_yaml(self) -> Dict[str, Any]:
         """Load configuration from YAML file."""
         try:
-            decrypted_content = self.decrypt_config_file()
+            decrypted_content = self.decrypt_config_file(self.config_path.read_bytes(), self.config_dir)
             yaml_content = yaml.safe_load(decrypted_content)
             if not isinstance(yaml_content, dict):
                 raise ValidationError("Invalid YAML structure. Expected a dictionary.")
@@ -136,11 +138,12 @@ class ConfigFormatHandler:
         except Exception as e:
             raise ValidationError(f"Failed to decrypt configuration file: {str(e)}")
 
-    def encrypt_config_file(self) -> None:
-        """Encrypt the content of the configuration file and save it back."""
+    @staticmethod
+    def encrypted_content(plaintext, config_path: Path, config_dir ) -> bytes:
+        """Encrypt the content of the configuration file."""
         from hashlib import sha256
-        config_path = self.config_path
-        config_json = self.config_dir / "config.json"
+        from keepercommander.crypto import encrypt_aes_v2
+        config_json = config_dir / "config.json"
         if not config_json.exists():
             raise FileNotFoundError(f"Config.json file not found: {config_json}")
         if not config_path.exists():
@@ -152,24 +155,29 @@ class ConfigFormatHandler:
             if not private_key:
                 raise ValidationError("Field 'private_key' not found in the configuration file.")
             hashed_key = sha256(private_key.encode('utf-8')).digest()
-            content = config_path.read_text()
-            logger.debug(f"Encrypting configuration {content} with key: {hashed_key}")
-            encrypted_content = encrypt_aes_v2(content.encode('utf-8'), hashed_key)
-            with open(config_path, 'wb') as encrypted_file:
-                encrypted_file.write(encrypted_content)
+            if isinstance(plaintext, dict):
+                plaintext = json.dumps(plaintext)
+            encrypted_content = encrypt_aes_v2(plaintext.encode('utf-8'), hashed_key)
+            return encrypted_content
         except Exception as e:
             raise ValidationError(f"Failed to encrypt configuration file: {str(e)}")
-    
-    def decrypt_config_file(self) -> str:
-        """Decrypt the content of the configuration file and return it as a dictionary."""
+            
+    @staticmethod
+    def encrypt_config_file(config_path: Path, config_dir: Path) -> None:
+        """Encrypt the content of the configuration file and save it back."""
+        encrypted_content = ConfigFormatHandler.encrypted_content(config_path.read_text(), config_path, config_dir)
+        with open(config_path, 'wb') as encrypted_file:
+            encrypted_file.write(encrypted_content)
+        
+        
+    @staticmethod
+    def decrypt_config_file(encrypted_content: bytes, config_dir: Path) -> str:
+        """Decrypt the content of the configuration file and return it as a string."""
         from hashlib import sha256
         from keepercommander.crypto import decrypt_aes_v2
-        config_path = self.config_path
-        config_json = self.config_dir / "config.json"
+        config_json = config_dir / "config.json"
         if not config_json.exists():
             raise FileNotFoundError(f"Config.json file not found: {config_json}")
-        if not config_path.exists():
-            raise FileNotFoundError(f"Configuration file not found: {config_path}")
         try:
             with open(config_json, 'r') as json_file:
                 config_json_data = json.load(json_file)
@@ -177,7 +185,6 @@ class ConfigFormatHandler:
             if not private_key:
                 raise ValidationError("Field 'private_key' not found in the configuration file.")
             hashed_key = sha256(private_key.encode('utf-8')).digest()
-            encrypted_content = config_path.read_bytes()
             return decrypt_aes_v2(encrypted_content, hashed_key).decode('utf-8')
         except Exception as e:
             raise ValidationError(f"Failed to decrypt configuration file: {str(e)}")

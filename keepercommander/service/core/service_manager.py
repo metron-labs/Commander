@@ -96,8 +96,8 @@ class ServiceManager:
 
                 if sys.platform == "win32":
                     subprocess.DETACHED_PROCESS = 0x00000008
-                    flask_process = subprocess.Popen(
-                        ["python", service_path],
+                    cls = subprocess.Popen(
+                        ["py", service_path],
                         creationflags= subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL  # Redirect output to log file
                     )
