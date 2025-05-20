@@ -756,32 +756,7 @@ class LoginCommand(Command):
         except Exception as exc:
             logging.warning(str(exc))
 
-        # If login was successful (we have a session token)
         if params.session_token:
-            # Check if this is a first login by checking if persistent login is not already enabled
-            is_first_login = True
-
-            # Check if persistent login is already enabled
-            acct_summary_dict, this_device = ThisDeviceCommand.get_account_summary_and_this_device(params)
-            if acct_summary_dict and "settings" in acct_summary_dict:
-                is_first_login = not acct_summary_dict["settings"].get("persistentLogin", False)
-
-            # Check if persistent login is disabled by the administrator
-            persistent_login_disabled = ThisDeviceCommand.is_persistent_login_disabled(params)
-
-            # If this is first login and persistent login is not disabled
-            if is_first_login and not persistent_login_disabled:
-                # Enable persistent login
-                loginv3.LoginV3API.set_user_setting(params, 'persistent_login', '1')
-                logging.info("Persistent login automatically enabled for this account")
-
-                # Register the device if not already registered
-                is_device_registered = loginv3.LoginV3API.register_encrypted_data_key_for_device(params)
-                if is_device_registered:
-                    logging.info("Device successfully registered for persistent login")
-                else:
-                    logging.info("Device was already registered")
-
             SyncDownCommand().execute(params, force=True)
             if params.is_enterprise_admin:
                 api.query_enterprise(params, True)
@@ -793,6 +768,7 @@ class LoginCommand(Command):
             except Exception as e:
                 logging.warning(f'A problem was encountered while updating BreachWatch/security data: {e}')
                 logging.debug(e, exc_info=True)
+
 
 class CheckEnforcementsCommand(Command):
     def get_parser(self):
