@@ -160,7 +160,7 @@ if sys.version_info >= (3, 8):
 
         def test_start_service_with_missing_port(self):
             """Test starting service with missing port in configuration"""
-            with mock.patch('keepercommander.service.core.service_manager.ServiceCxonfig') as mock_config, \
+            with mock.patch('keepercommander.service.core.service_manager.ServiceConfig') as mock_config, \
                 mock.patch('keepercommander.service.app.create_app') as mock_create_app, \
                 mock.patch('builtins.print') as mock_print:
                 
