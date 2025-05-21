@@ -4,8 +4,9 @@ class Verifycommand:
         """
         Returns True if the command is 'append-notes' and '--notes' is NOT present.
         """
-        if len(command) < 1:
+        if not command or command[0] != "append-notes":
             return False
-        if command[0] == "append-notes" and not any("--notes" in arg for arg in command):
-            return True
-        return False
+        for arg in command[1:]:
+            if arg.startswith("--notes="):
+                return arg == "--notes="
+        return True
